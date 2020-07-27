@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>이미지 마커와 커스텀 오버레이</title>
+    <style>
+        body{
+            max-width: 100%;
+            margin: 0 auto;
+            font-family: 'Roboto', sans-serif;
+            background-color: #FCF5E5;
+        }
+        .main {
+            text-align: center;
+        }
+        #map {
+            width:100%;
+            height:900px;
+            z-index: 3;
+        }
+        #input { 
+            z-index: 6;
+            text-align: center;
+            margin-top: 0;
+        }
+        #input:hover {
+            background : aliceblue;
+        }
+        #input:focus {
+            font-size : 120%;
+        }
+        .wrap {
+            position: absolute;
+            left: 0;
+            bottom: 40px;
+            width: 288px;
+            height: 132px;
+            margin-left: -144px;
+            text-align: left;
+            overflow: hidden;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, '돋움', sans-serif;
+            line-height: 1.5;
+        }
+        .wrap * {
+            padding: 0;
+            margin: 0;
+        }
+
+        .wrap .info {
+            width: 286px;
+            height: 120px;
+            border-radius: 5px;
+            border-bottom: 2px solid #ADA48F;
+            border-right: 1px solid #ADA48F;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .wrap .info:nth-child(1) {
+            border: 0;
+            box-shadow: 0px 1px 2px #888;
+        }
+
+        .info .title {
+            padding: 5px 0 0 10px;
+            height: 30px;
+            background: #ADA48F;
+            border-bottom: 1px solid #ddd;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .info .close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #888;
+            width: 17px;
+            height: 17px;
+            background: url('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/overlay_close.png');
+        }
+
+        .info .close:hover {
+            cursor: pointer;
+        }
+
+        .info .body {
+            position: relative;
+            overflow: hidden;
+            background-color: #C9D6BE;
+        }
+
+        .info .desc {
+            position: relative;
+            margin: 13px 0 0 90px;
+            height: 75px;
+        }
+
+        .desc .ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .desc .jibun {
+            font-size: 11px;
+            color: #888;
+            margin-top: -2px;
+        }
+
+        .info .img {
+            position: absolute;
+            top: 6px;
+            left: 5px;
+            width: 73px;
+            height: 71px;
+            border: 1px solid #ddd;
+            color: #888;
+            overflow: hidden;
+        }
+
+        .info:after {
+            content: '';
+            position: absolute;
+            margin-left: -12px;
+            left: 50%;
+            bottom: 0;
+            width: 22px;
+            height: 12px;
+            background: url('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/vertex_white.png')
+        }
+
+        .info .link {
+            color: #5085BB;
+            text-decoration: none;
+        }
+    </style>
+        
+</head>
+
+<body>
+    <div class="main">
+        <input id="input" type="text" value="" placeholder="검색"></input>
+        <div id="map">
+        </div>
+    </div>
+
+
+    <script type="text/javascript"
+        src="//dapi.kakao.com/v2/maps/sdk.js?appkey=발급받은 APP KEY를 넣으시면 됩니다.&libraries=services"></script>
+    <script>
+        const input = document.querySelector("#input")
+        let OverLay
+
+        var infowindow = new kakao.maps.InfoWindow({zIndex:2});
+
+        var mapContainer = document.getElementById('map'), // 지도의 중심좌표
+            mapOption = {
+                center: new kakao.maps.LatLng(33.451475, 126.570528), // 지도의 중심좌표
+                level: 3 // 지도의 확대 레벨
+            };
+
+        var map = new kakao.maps.Map(mapContainer, mapOption); // 지도를 생성합니다
+        
+        var ps = new kakao.maps.services.Places();
+
+        ps.keywordSearch('고려대학교 안암', placesSearchCB); 
+            // 키워드 검색 완료 시 호출되는 콜백함수 입니다
+        function placesSearchCB(data, status, pagination) {
+            if (status === kakao.maps.services.Status.OK) {
+
+                // 검색된 장소 위치를 기준으로 지도 범위를 재설정하기위해
+                // LatLngBounds 객체에 좌표를 추가합니다
+                var bounds = new kakao.maps.LatLngBounds();
+
+                for (var i = 0; i < data.length; i++) {
+                    displayMarker(data[i]);
+                    bounds.extend(new kakao.maps.LatLng(data[i].y, data[i].x));
+                }
+
+                // 검색된 장소 위치를 기준으로 지도 범위를 재설정합니다
+                map.setBounds(bounds);
+            }
+        }
+
+            // 지도에 마커를 표시하는 함수입니다
+        function displayMarker(place) {
+            console.dir(place)
+            // 마커를 생성하고 지도에 표시합니다
+            var marker = new kakao.maps.Marker({
+                map: map,
+                position: new kakao.maps.LatLng(place.y, place.x)
+            });
+            // 커스텀 오버레이에 표시할 컨텐츠 입니다
+            // 커스텀 오버레이는 아래와 같이 사용자가 자유롭게 컨텐츠를 구성하고 이벤트를 제어할 수 있기 때문에
+            // 별도의 이벤트 메소드를 제공하지 않습니다 
+
+            var content = '<div class="wrap">' +
+                '    <div class="info">' +
+                '        <div class="title">' +
+                            place.place_name +
+                '            <div class="close" onclick="closeOverlay()" title="닫기"></div>' +
+                '        </div>' +
+                '        <div class="body">' +
+                '            <div class="desc">' +
+                '                <div class="ellipsis">'+place.address_name+'</div>' +
+                '                <div class="phone">'+place.phone+'</div>'+
+                '                <div><a href='+place.place_url +' target="_blank" class="link">상세페이지</a></div>' +
+                '            </div>' +
+                '        </div>' +
+                '    </div>' +
+                '</div>';
+
+            // 마커 위에 커스텀오버레이를 표시합니다
+            // 마커를 중심으로 커스텀 오버레이를 표시하기위해 CSS를 이용해 위치를 설정했습니다
+            var overlay = new kakao.maps.CustomOverlay({
+                content: content,
+                map: map,
+                position: marker.getPosition()
+            });
+
+            // 마커를 클릭했을 때 커스텀 오버레이를 표시합니다
+            kakao.maps.event.addListener(marker, 'click', function () {
+                overlay.setMap(map);
+                OverLay = overlay;
+            });
+
+            // 커스텀 오버레이를 닫기 위해 호출되는 함수입니다 
+            function closeOverlay() {
+                overlay.setMap(null);
+            }
+
+            closeOverlay();
+        }
+        //연결된 오버레이를 닫습니다.
+        function closeOverlay(){
+        OverLay.setMap(null);
+        };
+        
+
+        input.addEventListener("keypress", (event) => {
+            let inputValue = ''
+
+            inputValue = event.target.value;
+            const ENTER_KEY = 'Enter'
+            console.dir(inputValue)
+            console.dir(input)
+            console.log(event.key)
+            if (event.key === ENTER_KEY) {
+                ps.keywordSearch(inputValue, placesSearchCB);
+                event.target.value = ''
+            }
+        }
+        )
+    </script>
+</body>
+</html>
